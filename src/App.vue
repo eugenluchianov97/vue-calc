@@ -3,92 +3,89 @@ export default {
   name:'app',
   data(){
     return{
-      buttons:[
-        [{num:'clear',value:'AC',bg:'grey',type:'clear',double:true,},{num:'del',value:'Del',bg:'grey',type:'delete'},{num:'/',value:'/',bg:'orange',type:'operation'}],
-        [{num:7,value:7,type:'number'},{num:8,value:8,type:'number'},{num:9,value:9,type:'number'},{num:'*',value:'*',bg:'orange',type:'operation'}],
-        [{num:4,value:4,type:'number'},{num:5,value:5,type:'number'},{num:6,value:6,type:'number'},{num:'-',value:'-',bg:'orange',type:'operation'}],
-        [{num:1,value:1,type:'number'},{num:2,value:2,type:'number'},{num:3,value:3,type:'number'},{num:'+',value:'+',bg:'orange',type:'operation'}],
-        [{num:0,value:0,double:true,type:'number'},{num:'.',value:'.',type:'number'},{num:'=',value:'=',bg:'orange',type:'equal'}],
+      player:true,
+      field:[
+        {value:'',id:0},{value:'',id:1},{value:'',id:2},
+        {value:'',id:3},{value:'',id:4},{value:'',id:5},
+        {value:'',id:6},{value:'',id:7},{value:'',id:8}
+
       ],
-      output:'',
-      currentOperand:'',
-      previousOperand:'',
-      operation:null,
+      x:[],
+      o:[],
+      winCombinations: [
+          [0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]
+      ],
+      message:"Ход синих",
+      endGame:false
+
     }
   },
   async mounted(){
-    const res = await fetch('https://jsonplaceholder.typicode.com/posts?_limit=3');
-    const posts = await res.json();
-    this.posts = posts
+
   },
   methods:{
-     push:function(btn){
-          console.log(btn.type)
-       if(btn.type === 'number'){
-         this.appendNumber(btn.value);
-       }
-       if(btn.type === 'delete'){
-         this.delete();
-       }
-       if(btn.type === 'clear'){
-         this.clear();
-       }
-       if(btn.type === 'delete'){
-         this.delete();
-       }
-       if(btn.type === 'equal'){
-         this.compute();
-       }
-     },
-     clear:function(){},
-     delete:function(){
-       this.currentOperand = this.currentOperand.toString().slice(0, -1)
-     },
-     appendNumber:function(number){
-       console.log('number =',number)
-       if (number === '.' && this.currentOperand.includes('.')) return
+    click:function(field){
+      let index = this.field.findIndex((val) => {return val.id === field.id })
 
-       this.currentOperand = this.currentOperand.toString() + number.toString()
 
-     },
-    chooseOperation:function(operation){
-      if (this.currentOperand === '') return
-      if (this.previousOperand !== '') {
-        this.compute()
+      if(this.field[index].value === '' && !this.endGame){
+          this.field[index].value = this.player ? 'x' : 'o';
+          if(this.player){
+            this.x.push(index)
+          }else{
+            this.o.push(index)
+          }
+
+          this.player = !this.player;
+          this.message = this.player ? 'Ход синих' : 'Ход красных'
+
       }
-      this.operation = operation
-      this.previousOperand = this.currentOperand
-      this.currentOperand = ''
+      this.calcWinner()
     },
-    compute:function(){
-      let computation
-      const prev = parseFloat(this.previousOperand)
-      const current = parseFloat(this.currentOperand)
-      if (isNaN(prev) || isNaN(current)) return
-      switch (this.operation) {
-        case '+':
-          computation = prev + current
-          break
-        case '-':
-          computation = prev - current
-          break
-        case '*':
-          computation = prev * current
-          break
-        case '÷':
-          computation = prev / current
-          break
-        default:
-          return
-      }
-      this.currentOperand = computation
-      this.operation = undefined
-      this.previousOperand = ''
+    calcWinner: function(){
+      this.winCombinations.map(arr => {
+        const xWin = arr.sort().every(element => {
+            return this.x.sort().includes(element);
+        });
+        const oWin = arr.sort().every(element => {
+          return this.o.sort().includes(element);
+        });
+
+        let count = 9;
+
+        this.field.map(el => {
+           if(el.value !== ''){
+             count--
+           }
+        })
+
+        if(xWin){
+           this.endGame =  true;
+           this.message = 'Синие выиграли!'
+        }
+        if(oWin){
+           this.endGame =  true;
+           this.message = 'Красные выиграли!'
+        }
+
+        if(count === 0){
+          this.endGame =  true;
+          this.message = 'Ничья!'
+        }
+      })
     },
-    updateDisplay:function(){
-      this.currentOperand = ''
-      this.previousOperand = ''
-      this.operation = undefined
+    newGame:function(){
+      this.x = [];
+      this.o = [];
+      this.player = true;
+      this.message = 'Ход синих!'
+      this.field.map(el => {
+         el.value = '';
+      })
+
+      console.log(this.field)
+
+      this.endGame = false
     }
   }
 }
@@ -97,19 +94,16 @@ export default {
 
 <template>
   <div class="absolute top-0 left-0 right-0 bottom-0 bg-cyan-400 flex items-center justify-center">
-       <div class="max-w-md bg-black mx-auto 5 rounded-md ">
-         <div class="mx-3 my-3">
-           <input type="text" v-model="currentOperand" class="w-full border-none outline-0 text-light text-slate-400 p-3"  readonly />
-         </div>
+       <div class="max-w-md bg-white mx-auto p-2">
 
-         <div class="px-2 py-3 ">
-           <div class="flex" v-for="row in buttons">
-             <div v-on:click="push(btn)" v-for="btn in row" class=" m-1 cursor-pointer text-white font-medium rounded-md  flex items-center justify-center h-12" :class="[btn.double ? 'w-26' : 'w-12' ,btn.bg === 'grey' ? 'bg-slate-300 text-black' : '',btn.bg === 'orange' ? 'bg-orange-600' : '',!btn.bg? 'bg-gray-600' : '']" >
-               {{btn.value}}
+           <p class="p-2 my-2">{{message}}</p>
+           <div class="flex flex-wrap w-50" >
+             <div v-for="cell in field" v-on:click="click(cell)" class="m-1 w-16 h-16 border border-slate-400 flex items-center justify-center">
+                <div v-if="cell.value === 'x'" :class="cell.value === 'x' ? 'bg-blue-500 ' : '' " class="w-full h-full" ></div>
+                <div v-if="cell.value === 'o'" :class="cell.value === 'o' ? 'bg-red-500 ' : '' " class="w-full h-full" ></div>
              </div>
-
+             <div v-on:click="newGame" class="w-full md:w-80 opacity-1 bg-white my-2 px-3 py-2  text-center border-2 border-slate-700 text-slate-700 font-bold rounded-md ">Новая игра</div>
            </div>
-         </div>
 
 
        </div>
